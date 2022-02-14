@@ -12,8 +12,20 @@
 	display: block;
 }
 
+.card-icon-default {
+    top: 12px; left: 81%;
+}
+
 .card-icon-pi {
-    top: 0px; left: 92%;
+    top: 5px; left: 90%;
+}
+
+.card-change-color-icon-default {
+    top: 90px; left: 80%;
+}
+
+.card-change-color-icon-pi {
+    top: 120px; left: 88%;
 }
 
 .card-image {

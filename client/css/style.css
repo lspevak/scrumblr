@@ -63,10 +63,15 @@ body {
 .card-icon {
     display:none;
     position: absolute;
-    /* top: 3%; left: 82%; */
-    top: 3%; left: 82%;
     opacity: .3;
     width: 16px; height: 16px;
+}
+
+.card-change-color-icon {
+    display:none;
+    position: absolute;
+    opacity: .3;
+    width: 25px; height: 25px;
 }
 
 .card-icon-hover {

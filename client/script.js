@@ -9,6 +9,16 @@ var ctrlPressed = false;
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
 var socket = io.connect({path: baseurl + "/socket.io"});
 
+var cardColours = [
+    'white',
+    'yellow',
+    'green',
+    'blue',
+    'orange',
+    'purple',
+    'red'
+];
+
 //an action has happened, send it to the server
 function sendAction(a, d) {
     // console.log('--> ' + a);
@@ -106,8 +116,15 @@ function getMessage(m) {
             break;
 
         case 'editCard':
-            $("#" + data.id).children('.content:first').attr('data-text', data.value);
-            $("#" + data.id).children('.content:first').html(marked(data.value));
+            cardObj = $("#" + data.id)
+            if (data.value) {
+                cardObj.children('.content:first').attr('data-text', data.value);
+                cardObj.children('.content:first').html(marked(data.value));
+            }
+            if (data.colour) {
+                changeCardColour(cardObj, data.colour)
+            }
+
             break;
 
         case 'pulsateCard':
@@ -217,20 +234,23 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 	if (!type || type == 1) {
 	    img_src = colour + "-card.png";
 	    style_content = "";
-	    style_card_icon = "";
+	    style_card_icon = " card-icon-default";
+	    style_card_change_color_icon = " card-change-color-icon-default";
 	    style_filler = "";
 	} else if (type == 2) {
 	    img_src = colour + "-card-pi.png";
 	    style_content = " content-pi";
 	    style_card_icon = " card-icon-pi";
+	    style_card_change_color_icon = " card-change-color-icon-pi";
 	    style_filler = " filler-pi";
 	}
 
-    var h = '<div id="' + id + '" class="card ' + colour +
+    var h = '<div id="' + id + '" class="card ' +
         ' draggable" style="-webkit-transform:rotate(' + rot +
         'deg);\
 	">\
-	<img src="images/icons/token/Xion.png" class="card-icon' + style_card_icon + ' delete-card-icon" />\
+	<img src="images/icons/token/Xion.png" class="card-icon' + style_card_icon + '" />\
+	<img src="images/icons/token/fill-colour.png" class="card-change-color-icon' + style_card_change_color_icon + '" />\
 	<img class="card-image" src="images/' + img_src + '">\
 	<div id="content:' + id + '" class="content' + style_content + ' stickertarget droppable" data-text="">' +
         marked(text) + '</div><span class="filler' + style_filler + '"></span></div>';
@@ -309,10 +329,12 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         function() {
             $(this).addClass('hover');
             $(this).children('.card-icon').fadeIn(10);
+            $(this).children('.card-change-color-icon').fadeIn(10);
         },
         function() {
             $(this).removeClass('hover');
             $(this).children('.card-icon').fadeOut(150);
+            $(this).children('.card-change-color-icon').fadeOut(150);
         }
     );
 
@@ -325,7 +347,16 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         }
     );
 
-    card.children('.delete-card-icon').click(
+    card.children('.card-change-color-icon').hover(
+        function() {
+            $(this).addClass('card-icon-hover');
+        },
+        function() {
+            $(this).removeClass('card-icon-hover');
+        }
+    );
+
+    card.children('.card-icon').click(
         function() {
             $("#" + id).remove();
             //notify server of delete
@@ -335,9 +366,15 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         }
     );
 
+    card.children('.card-change-color-icon').click(
+        function() {
+            changeToNextCardColour(id);
+        }
+    );
+
     card.children('.content').editable(function(value, settings) {
         $("#" + id).children('.content:first').attr('data-text', value);
-        onCardChange(id, value);
+        onCardChange(id, value, null);
         return (marked(value));
     }, {
         type: 'textarea',
@@ -372,10 +409,11 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         addSticker(id, sticker);
 }
 
-function onCardChange(id, text) {
+function onCardChange(id, text, colour) {
     sendAction('editCard', {
         id: id,
-        value: text
+        value: text,
+        colour: colour
     });
 }
 
@@ -384,6 +422,45 @@ function moveCard(card, position) {
         left: position.left + "px",
         top: position.top + "px"
     }, 500);
+}
+
+function changeToNextCardColour(id) {
+    var cardObj = $('#' + id)
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var currentColour = null;
+    var i = 0;
+    for(i=0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            currentColour = cardColours[i];
+            break;
+        }
+    }
+
+    newColour = i + 1 < cardColours.length ? cardColours[i + 1] : cardColours[0];
+
+    // replace image
+    var newImgSrc = cardImgSrc.replace(currentColour, newColour);
+    cardObj.children('.card-image').attr("src", newImgSrc);
+
+    onCardChange(id, null, newColour);
+}
+
+function changeCardColour(cardObj, colour) {
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var currentColour = null;
+    var i = 0;
+    for(i=0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            currentColour = cardColours[i];
+            break;
+        }
+    }
+
+    // replace image
+    var newImgSrc = cardImgSrc.replace(currentColour, colour);
+    cardObj.children('.card-image').attr('src', newImgSrc);
 }
 
 function moveEraser(eraser, x) {
@@ -451,9 +528,7 @@ function createCard(id, text, x, y, rot, colour, type) {
 }
 
 function randomCardColour() {
-    var colours = ['yellow', 'green', 'blue', 'white', 'orange', 'purple', 'red'];
-    var i = Math.floor(Math.random() * colours.length);
-
+    var i = Math.floor(Math.random() * cardColours.length);
     return colours[i];
 }
 

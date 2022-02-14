@@ -183,12 +183,18 @@ io.sockets.on('connection', function (client) {
 
 			case 'editCard':
 				clean_data = {};
-				clean_data.value = scrub_md(message.data.value);
 				clean_data.id = scrub(message.data.id);
+				if (message.data.value) {
+					clean_data.value = scrub_md(message.data.value);
+				}
+
+				if (message.data.colour) {
+					clean_data.colour = scrub(message.data.colour);
+				}
 
 				//send update to database
 				getRoom(client, function(room) {
-					db.cardEdit( room , clean_data.id, clean_data.value );
+					db.cardEdit( room , clean_data.id, clean_data.value, clean_data.colour);
 				});
 
 				message_out = {
