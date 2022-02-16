@@ -1,4 +1,4 @@
-scrumblr, v. 0.10
+scrumblr, v. 0.10.0
 ========
 
 what is it
