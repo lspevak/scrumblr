@@ -5,6 +5,8 @@ var currentTheme = "bigcards";
 var boardInitialized = false;
 var keyTrap = null;
 var ctrlPressed = false;
+var selectBoxX1 = 0, selectBoxY1 = 0, selectBoxX2 = 0, selectBoxY2 = 0;
+var isSelectBoxActive = false
 
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
 var socket = io.connect({path: baseurl + "/socket.io"});
@@ -222,8 +224,10 @@ $(document).bind('keyup', function(event) {
 $(document).bind('keydown', function(event) {
     keyTrap = event.which;
 
-    if (keyTrap == 17) { // ctrl
+    if (keyTrap == 17) { // CTRL
         ctrlPressed = true;
+    } else if (keyTrap == 46) { // DEL
+        deleteSelectedCards();
     }
 });
 
@@ -621,7 +625,7 @@ function drawNewColumn(columnName) {
         width: '',
         height: '',
         xindicator: '<img src="images/ajax-loader.gif">',
-        event: 'dblclick', //event: 'mouseover'
+        event: 'dblclick'
     });
 
     $('.col:last').fadeIn(1500);
@@ -740,7 +744,7 @@ function drawNewRow(id, text, y) {
         width: '200px',
         height: '',
         onblur: 'submit',
-        event: 'dblclick',
+        event: 'dblclick'
     });
 
     row.hover(
@@ -969,8 +973,7 @@ function adjustCard(offsets, doSync) {
             var data = {
                 id: this.id,
                 position: {
-                    left: offset.col.position().left + (offset.x * offset.col
-                        .outerWidth()),
+                    left: offset.col.position().left + (offset.x * offset.col.outerWidth()),
                     top: parseInt(card.css('top').slice(0, -2))
                 },
                 oldposition: {
@@ -988,6 +991,74 @@ function adjustCard(offsets, doSync) {
         }
     });
 }
+
+function reCalcSelectBox() {
+    var x3 = Math.min(selectBoxX1, selectBoxX2);
+    var x4 = Math.max(selectBoxX1, selectBoxX2);
+    var y3 = Math.min(selectBoxY1, selectBoxY2);
+    var y4 = Math.max(selectBoxY1, selectBoxY2);
+
+    var selectBox = $('#select-box')
+    selectBox.css('left', x3 + 'px');
+    selectBox.css('top', y3 + 'px');
+    selectBox.css('width', x4 - x3 + 'px');
+    selectBox.css('height', y4 - y3 + 'px');
+}
+
+function getXY(evt, element) {
+    var scrollTop = document.documentElement.scrollTop ?
+        document.documentElement.scrollTop :
+        document.body.scrollTop;
+    var scrollLeft = document.documentElement.scrollLeft ?
+        document.documentElement.scrollLeft :
+        document.body.scrollLeft;
+    var parentOffset = element.offset();
+    var x = evt.clientX - parentOffset.left + scrollLeft;
+    var y = evt.clientY - parentOffset.top + scrollTop;
+
+    return {x:x, y:y};
+}
+
+function selectCards() {
+    $(".card").each(function() {
+        var card = $(this);
+        var cardX1 = card.position().left + 25
+        var cardY1 = card.position().top + 25
+        var cardX2 = cardX1 + card.width() - 25
+        var cardY2 = cardY1 + card.height() - 25
+        var leftPos = Math.min(selectBoxX1, selectBoxX2);
+        var topPos = Math.min(selectBoxY1, selectBoxY2);
+        var rightPos = Math.max(selectBoxX1, selectBoxX2);
+        var bottomPos = Math.max(selectBoxY1, selectBoxY2);
+
+        if (cardX1 >= leftPos && cardX2 <= rightPos && cardY1 >= topPos && cardY2 <= bottomPos) {
+            card.addClass('card-marked');
+        }
+    });
+}
+
+function deselectCards() {
+    $(".card").each(function() {
+        var card = $(this);
+        card.removeClass('card-marked')
+    });
+}
+
+function deleteSelectedCards() {
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            cardId = card.attr('id')
+            $("#" + cardId).remove();
+            // notify server of delete
+            sendAction('deleteCard', {
+                id: cardId
+            });
+        }
+    });
+}
+
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -1317,9 +1388,14 @@ $(function() {
         sendAction('moveEraser', data);
     });
 
-    $('#board').click(function(event) {
+    board = $('#board')
+    selectBox = $('#select-box')
+
+    board.click(function(event) {
         // ignore clicking on a card
-        if (event.target.tagName != 'TD') {
+        var isColumn = $(event.target).hasClass('col')
+        var isIconColumn = event.target.id == 'icon-col'
+        if (!isIconColumn && !isColumn) {
             return;
         }
 
@@ -1340,5 +1416,50 @@ $(function() {
         var left = event.pageX - 20;
         dlg.css({top: top + 'px', left: left + 'px', position: 'relative'});
         dlg.css('visibility', 'visible');
+    });
+
+    // Select box for cards
+    board.mousedown(function(event) {
+        deselectCards();
+
+        // ignore clicking on a card
+        var isColumn = $(event.target).hasClass('col')
+        var isIconColumn = event.target.id == 'icon-col'
+        if (!isIconColumn && !isColumn) {
+            return;
+        }
+
+        selectBox.css('visibility', 'visible');
+
+        var pos = getXY(event, board)
+        selectBoxX1 = pos.x;
+        selectBoxY1 = pos.y;
+        selectBoxX2 = pos.x;
+        selectBoxY2 = pos.y;
+        isSelectBoxActive = true;
+
+        reCalcSelectBox();
+    });
+
+    board.mousemove(function(event) {
+        if (!isSelectBoxActive) {
+            return;
+        }
+
+        var pos = getXY(event, board)
+        selectBoxX2 = pos.x;
+        selectBoxY2 = pos.y;
+
+        reCalcSelectBox();
+    });
+
+    $(document).mouseup(function(event) {
+        if (!isSelectBoxActive) {
+            return;
+        }
+
+         selectBox.css('visibility', 'hidden');
+         isSelectBoxActive = false;
+         selectCards();
     });
 });

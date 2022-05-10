@@ -1,4 +1,4 @@
-scrumblr, v. 0.10.0
+scrumblr, v. 0.11.0
 ========
 
 what is it
@@ -21,6 +21,8 @@ This fork contains useful extensions and fixes of this simple and great tool use
 - seven new colors of Postit-like cards, so 14 cards in 3 sizes are available now - v. 0.9.0
 - upgrade of socket.io library (trying to solve time-out issues), extend max. board dimensions - v. 0.9.1
 - rotate card colours on button click - v. 0.10
+- minor refactoring: use only fonts from local server - v. 0.11
+- select multiple cards using mouse (click on board and select area with cards) and then press DELETE to remove them - v. 0.11
 - ...
 
 ![Extensions and fixes](scrumblr_extensions_2020.png)

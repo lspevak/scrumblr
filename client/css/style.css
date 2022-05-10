@@ -94,6 +94,10 @@ body {
 	opacity: .9;
 }
 
+.card-marked {
+    border: 3px black dotted;
+}
+
 .card-edit-form, .card-edit-form input, .card-edit-form textarea {
 	border: none;
 	font-size:inherit;
@@ -666,4 +670,9 @@ img {
 	font-size: 14px;
 	font-weight: bold;
 	width: 100px;
+}
+
+#select-box {
+    border: 1px dotted #000;
+    position: absolute;
 }
