@@ -1390,35 +1390,9 @@ $(function() {
 
     board = $('#board')
     selectBox = $('#select-box')
+    buttonsDialog = $('#buttons-dialog');
 
-    board.click(function(event) {
-        // ignore clicking on a card
-        var isColumn = $(event.target).hasClass('col')
-        var isIconColumn = event.target.id == 'icon-col'
-        if (!isIconColumn && !isColumn) {
-            return;
-        }
-
-        // if clicking outsize of dialog, hide it
-        var dlg = $('#buttons-dialog');
-        if (dlg.css('visibility') == 'visible') {
-            dlg.css('visibility', 'hidden');
-        }
-
-        if (!ctrlPressed) {
-            return;
-        } else {
-            ctrlPressed = false;
-        }
-
-        // show create card dialog
-        var top = event.pageY - 50;
-        var left = event.pageX - 20;
-        dlg.css({top: top + 'px', left: left + 'px', position: 'relative'});
-        dlg.css('visibility', 'visible');
-    });
-
-    // Select box for cards
+    // Handle show select box for cards or buttons dialog
     board.mousedown(function(event) {
         deselectCards();
 
@@ -1429,21 +1403,38 @@ $(function() {
             return;
         }
 
-        selectBox.css('visibility', 'visible');
+        // if clicking outsize of dialog, hide it
+        if (buttonsDialog.css('visibility') == 'visible') {
+            buttonsDialog.css('visibility', 'hidden');
+        }
 
-        var pos = getXY(event, board)
-        selectBoxX1 = pos.x;
-        selectBoxY1 = pos.y;
-        selectBoxX2 = pos.x;
-        selectBoxY2 = pos.y;
-        isSelectBoxActive = true;
+        if (ctrlPressed) {
+            // show create card dialog
+            var top = event.pageY - 50;
+            var left = event.pageX - 20;
+            buttonsDialog.css({top: top + 'px', left: left + 'px', position: 'relative'});
+            buttonsDialog.css('visibility', 'visible');
+            return;
+        } else {
+            var pos = getXY(event, board);
+            selectBoxX1 = pos.x;
+            selectBoxY1 = pos.y;
+            selectBoxX2 = pos.x;
+            selectBoxY2 = pos.y;
+            isSelectBoxActive = true;
 
-        reCalcSelectBox();
+            reCalcSelectBox();
+        }
     });
 
     board.mousemove(function(event) {
         if (!isSelectBoxActive) {
             return;
+        }
+
+        // show select box if not visible
+        if (selectBox.css('visibility') != 'visible') {
+            selectBox.css('visibility', 'visible');
         }
 
         var pos = getXY(event, board)
@@ -1454,6 +1445,10 @@ $(function() {
     });
 
     $(document).mouseup(function(event) {
+        if (ctrlPressed) {
+            ctrlPressed = false;
+        }
+
         if (!isSelectBoxActive) {
             return;
         }
