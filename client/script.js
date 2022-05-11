@@ -1414,6 +1414,7 @@ $(function() {
             var left = event.pageX - 20;
             buttonsDialog.css({top: top + 'px', left: left + 'px', position: 'relative'});
             buttonsDialog.css('visibility', 'visible');
+            ctrlPressed = false;
             return;
         } else {
             var pos = getXY(event, board);
@@ -1445,10 +1446,6 @@ $(function() {
     });
 
     $(document).mouseup(function(event) {
-        if (ctrlPressed) {
-            ctrlPressed = false;
-        }
-
         if (!isSelectBoxActive) {
             return;
         }
