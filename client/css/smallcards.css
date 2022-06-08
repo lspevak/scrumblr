@@ -28,6 +28,14 @@
     top: 50px; left: 80%;
 }
 
+.card-copy-icon-default {
+    top: 25px; left: 84%;
+}
+
+.card-copy-icon-pi {
+    top: 25px; left: 84%;
+}
+
 .card-image {
 	position: absolute;
 	xtop: -10;

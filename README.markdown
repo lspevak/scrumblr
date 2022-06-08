@@ -1,4 +1,4 @@
-scrumblr, v. 0.11.0
+scrumblr, v. 0.12.0
 ========
 
 what is it
@@ -23,6 +23,7 @@ This fork contains useful extensions and fixes of this simple and great tool use
 - rotate card colours on button click - v. 0.10
 - minor refactoring: use only fonts from local server - v. 0.11
 - select multiple cards using mouse (click on board and select area with cards) and then press DELETE to remove them - v. 0.11
+- clone a card using a new icon button on a card - v. 0.12
 - ...
 
 ![Extensions and fixes](scrumblr_extensions_2020.png)

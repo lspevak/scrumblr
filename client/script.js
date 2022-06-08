@@ -1,5 +1,5 @@
 var cards = {};
-var totalcolumns = 0;
+var columnsCount = 0;
 var columns = [];
 var currentTheme = "bigcards";
 var boardInitialized = false;
@@ -240,12 +240,14 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 	    style_content = "";
 	    style_card_icon = " card-icon-default";
 	    style_card_change_color_icon = " card-change-color-icon-default";
+	    style_card_copy_icon = " card-copy-icon-default";
 	    style_filler = "";
 	} else if (type == 2) {
 	    img_src = colour + "-card-pi.png";
 	    style_content = " content-pi";
 	    style_card_icon = " card-icon-pi";
 	    style_card_change_color_icon = " card-change-color-icon-pi";
+	    style_card_copy_icon = " card-copy-icon-pi";
 	    style_filler = " filler-pi";
 	}
 
@@ -254,6 +256,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         'deg);\
 	">\
 	<img src="images/icons/token/Xion.png" class="card-icon' + style_card_icon + '" />\
+	<img src="images/icons/token/copy-card.png" class="card-copy-icon' + style_card_copy_icon + '" />\
 	<img src="images/icons/token/fill-colour.png" class="card-change-color-icon' + style_card_change_color_icon + '" />\
 	<img class="card-image" src="images/' + img_src + '">\
 	<div id="content:' + id + '" class="content' + style_content + ' stickertarget droppable" data-text="">' +
@@ -334,11 +337,13 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
             $(this).addClass('hover');
             $(this).children('.card-icon').fadeIn(10);
             $(this).children('.card-change-color-icon').fadeIn(10);
+            $(this).children('.card-copy-icon').fadeIn(10);
         },
         function() {
             $(this).removeClass('hover');
             $(this).children('.card-icon').fadeOut(150);
             $(this).children('.card-change-color-icon').fadeOut(150);
+            $(this).children('.card-copy-icon').fadeOut(150);
         }
     );
 
@@ -360,6 +365,15 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         }
     );
 
+    card.children('.card-copy-icon').hover(
+        function() {
+            $(this).addClass('card-icon-hover');
+        },
+        function() {
+            $(this).removeClass('card-icon-hover');
+        }
+    );
+
     card.children('.card-icon').click(
         function() {
             $("#" + id).remove();
@@ -373,6 +387,12 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     card.children('.card-change-color-icon').click(
         function() {
             changeToNextCardColour(id);
+        }
+    );
+
+    card.children('.card-copy-icon').click(
+        function() {
+            copyCard(id);
         }
     );
 
@@ -465,6 +485,50 @@ function changeCardColour(cardObj, colour) {
     // replace image
     var newImgSrc = cardImgSrc.replace(currentColour, colour);
     cardObj.children('.card-image').attr('src', newImgSrc);
+}
+
+function copyCard(id) {
+    var cardObj = $('#' + id);
+    var cardPosition = cardObj.position();
+    var cardText = cardObj.children('.content:first').attr('data-text');
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var cardColor = null;
+    var cardType = null;
+    var cardOffset = null;
+    var i = 0;
+    for(i = 0; i < cardColours.length;i++) {
+        var idx = cardImgSrc.indexOf(cardColours[i]);
+        if (idx != -1) {
+            cardColor = cardColours[i];
+
+            var idxSuffix = cardImgSrc.indexOf('-pi');
+            if (idxSuffix == -1) {
+                cardType = 1;
+
+                if (currentTheme == "smallcards") {
+                    cardOffset = 90;
+                } else if (currentTheme == "mediumcards") {
+                    cardOffset = 180;
+                } else if (currentTheme == "bigcards") {
+                    cardOffset = 230;
+                }
+            } else {
+                cardType = 2;
+
+                if (currentTheme == "smallcards") {
+                    cardOffset = 110;
+                } else if (currentTheme == "mediumcards") {
+                    cardOffset = 220;
+                } else if (currentTheme == "bigcards") {
+                    cardOffset = 280;
+                }
+            }
+
+            break;
+        }
+    }
+
+    createCardAtPos(cardPosition.left + cardOffset, cardPosition.top, cardColor, cardText, cardType);
 }
 
 function moveEraser(eraser, x) {
@@ -570,6 +634,20 @@ function createCardAtDlgPos(color, type) {
     dlg.css('visibility', 'hidden');
 }
 
+function createCardAtPos(x, y, color, text, type) {
+    var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 10deg)
+    var id = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
+
+    createCard(
+        'card' + id,
+        text,
+        x,
+        y,
+        rotation,
+        color,
+        type);
+}
+
 function initCards(cardArray) {
     //first delete any cards that exist
     $('.card').remove();
@@ -605,12 +683,12 @@ function pulsateCard(id) {
 
 function drawNewColumn(columnName) {
     var cls = "col";
-    if (totalcolumns === 0) {
+    if (columnsCount === 0) {
         cls = "col first";
     }
 
     $('#icon-col').before('<td class="' + cls +
-        '" width="10%" style="display:none"><h2 id="col-' + (totalcolumns + 1) +
+        '" width="10%" style="display:none"><h2 id="col-' + (columnsCount + 1) +
         '" class="editable">' + columnName + '</h2></td>');
 
     $('.editable').editable(function(value, settings) {
@@ -630,7 +708,7 @@ function drawNewColumn(columnName) {
 
     $('.col:last').fadeIn(1500);
 
-    totalcolumns++;
+    columnsCount++;
 }
 
 function onColumnChange(id, text) {
@@ -652,7 +730,7 @@ function onColumnChange(id, text) {
 }
 
 function displayRemoveColumn() {
-    if (totalcolumns <= 0) return false;
+    if (columnsCount <= 0) return false;
 
     $('.col:last').fadeOut(150,
         function() {
@@ -660,11 +738,11 @@ function displayRemoveColumn() {
         }
     );
 
-    totalcolumns--;
+    columnsCount--;
 }
 
 function createColumn(name) {
-    if (totalcolumns >= 8) {
+    if (columnsCount >= 8) {
         return false;
     }
 
@@ -678,7 +756,7 @@ function createColumn(name) {
 }
 
 function deleteColumn() {
-    if (totalcolumns <= 0) {
+    if (columnsCount <= 0) {
         return false;
     }
 
@@ -833,7 +911,7 @@ function updateRowPos(id, y) {
 }
 
 function initColumns(columnArray) {
-    totalcolumns = 0;
+    columnsCount = 0;
     columns = columnArray;
 
     $('.col').remove();

@@ -90,6 +90,13 @@ body {
     width: 25px; height: 25px;
 }
 
+.card-copy-icon {
+    display:none;
+    position: absolute;
+    opacity: .3;
+    width: 20px; height: 20px;
+}
+
 .card-icon-hover {
 	opacity: .9;
 }
