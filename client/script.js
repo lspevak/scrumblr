@@ -5,8 +5,13 @@ var currentTheme = "bigcards";
 var boardInitialized = false;
 var keyTrap = null;
 var ctrlPressed = false;
+// select box attributes
 var selectBoxX1 = 0, selectBoxY1 = 0, selectBoxX2 = 0, selectBoxY2 = 0;
 var isSelectBoxActive = false
+// position object (CSS) of card, which is being dragged
+var startSourceCardPosition = null;
+// Mapping of card ID -> original left, top positions
+var selectedCardPositions = null;
 
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
 var socket = io.connect({path: baseurl + "/socket.io"});
@@ -274,12 +279,16 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         stack: ".card",
         start: function(event, ui) {
             keyTrap = null;
+            startMovingSelectedCards(this.id, ui.position);
         },
         drag: function(event, ui) {
             if (keyTrap == 27) {
                 ui.helper.css(ui.originalPosition);
+                cancelMovingOtherSelectedCards(this.id);
                 return false;
             }
+
+            moveOtherSelectedCards(this.id, ui.position);
         },
 		handle: "div.content"
     });
@@ -298,6 +307,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         };
 
         sendAction('moveCard', data);
+        finishMovingOtherSelectedCards(this.id);
     });
 
     card.children(".droppable").droppable({
@@ -446,6 +456,102 @@ function moveCard(card, position) {
         left: position.left + "px",
         top: position.top + "px"
     }, 500);
+}
+
+function moveOtherSelectedCards(sourceCardId, sourceCardPosition) {
+    var diffX = sourceCardPosition.left - startSourceCardPosition.left;
+    var diffY = sourceCardPosition.top - startSourceCardPosition.top;
+
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            var cardId = card.attr('id')
+            if (cardId == sourceCardId) {
+                return;
+            }
+
+            var cardPosition = selectedCardPositions[cardId];
+            var newLeftPosition = Math.max(0, cardPosition.left + diffX);
+            var newTopPosition = Math.max(0, cardPosition.top + diffY);
+
+            card.css('left', newLeftPosition);
+            card.css('top', newTopPosition);
+        }
+    });
+}
+
+function startMovingSelectedCards(sourceCardId, sourceCardPosition) {
+    // global objects
+    startSourceCardPosition = sourceCardPosition;
+    selectedCardPositions = {}
+
+    // deselect cards if clicked card is not selected
+    $(".card").each(function() {
+        var card = $(this);
+        var cardId = card.attr('id')
+        if (cardId == sourceCardId && !card.hasClass('card-marked')) {
+            deselectCards();
+        }
+    });
+
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            var cardId = card.attr('id')
+
+            selectedCardPositions[cardId] = {
+                "left": card.position().left,
+                "top": card.position().top,
+            };
+        }
+    });
+}
+
+function cancelMovingOtherSelectedCards(sourceCardId) {
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            var cardId = card.attr('id')
+            if (cardId == sourceCardId) {
+                return;
+            }
+
+            var cardPosition = selectedCardPositions[cardId]
+
+            card.css('left', cardPosition.left);
+            card.css('top', cardPosition.top);
+        }
+    });
+}
+
+function finishMovingOtherSelectedCards(sourceCardId) {
+    $(".card").each(function() {
+        var card = $(this);
+
+        if (card.hasClass('card-marked')) {
+            var cardId = card.attr('id')
+            if (cardId == sourceCardId) {
+                return;
+            }
+
+            var origCardPosition = selectedCardPositions[cardId]
+            var cardPosition = card.position()
+            var clonedCardPosition = {...cardPosition}
+            clonedCardPosition.left = origCardPosition.left
+            clonedCardPosition.top = origCardPosition.top
+
+            var data = {
+                id: cardId,
+                position: cardPosition,
+                oldposition: clonedCardPosition,
+            };
+
+            sendAction('moveCard', data);
+        }
+    });
 }
 
 function changeToNextCardColour(id) {
@@ -1127,7 +1233,7 @@ function deleteSelectedCards() {
         var card = $(this);
 
         if (card.hasClass('card-marked')) {
-            cardId = card.attr('id')
+            var cardId = card.attr('id')
             $("#" + cardId).remove();
             // notify server of delete
             sendAction('deleteCard', {
@@ -1472,14 +1578,14 @@ $(function() {
 
     // Handle show select box for cards or buttons dialog
     board.mousedown(function(event) {
-        deselectCards();
-
         // ignore clicking on a card
         var isColumn = $(event.target).hasClass('col')
         var isIconColumn = event.target.id == 'icon-col'
         if (!isIconColumn && !isColumn) {
             return;
         }
+
+        deselectCards();
 
         // if clicking outsize of dialog, hide it
         if (buttonsDialog.css('visibility') == 'visible') {
