@@ -1060,7 +1060,7 @@ function createCard(id, text, x, y, rot, colour, type) {
 
 function randomCardColour() {
     var i = Math.floor(Math.random() * cardColours.length);
-    return colours[i];
+    return cardColours[i];
 }
 
 function createCardAtRandomPos(color, type) {
