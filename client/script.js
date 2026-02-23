@@ -1206,10 +1206,11 @@ function getXY(evt, element) {
 function selectCards() {
     $(".card").each(function() {
         var card = $(this);
-        var cardX1 = card.position().left + 25
-        var cardY1 = card.position().top + 25
-        var cardX2 = cardX1 + card.width() - 25
-        var cardY2 = cardY1 + card.height() - 25
+        var cardOffset = card.offset();
+        var cardX1 = cardOffset.left + 25;
+        var cardY1 = cardOffset.top + 25;
+        var cardX2 = cardX1 + card.width() - 25;
+        var cardY2 = cardY1 + card.height() - 25;
         var leftPos = Math.min(selectBoxX1, selectBoxX2);
         var topPos = Math.min(selectBoxY1, selectBoxY2);
         var rightPos = Math.max(selectBoxX1, selectBoxX2);
@@ -1577,11 +1578,18 @@ $(function() {
     buttonsDialog = $('#buttons-dialog');
 
     // Handle show select box for cards or buttons dialog
-    board.mousedown(function(event) {
-        // ignore clicking on a card
-        var isColumn = $(event.target).hasClass('col')
-        var isIconColumn = event.target.id == 'icon-col'
-        if (!isIconColumn && !isColumn) {
+    $(document).mousedown(function(event) {
+        // ignore clicking on a card or other interactive elements
+        var isCard = $(event.target).hasClass('card') || $(event.target).closest('.card').length > 0;
+        var isSticker = $(event.target).hasClass('sticker-img');
+        var isEditable = $(event.target).hasClass('editable');
+        var isButton = $(event.target).closest('.buttons').length > 0;
+        var isStickers = $(event.target).closest('.stickers').length > 0;
+        var isNames = $(event.target).closest('.names').length > 0;
+        var isButtonsDialog = $(event.target).closest('#buttons-dialog').length > 0;
+        var isColIcon = $(event.target).hasClass('col-icon');
+        
+        if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon) {
             return;
         }
 
@@ -1601,18 +1609,18 @@ $(function() {
             ctrlPressed = false;
             return;
         } else {
-            var pos = getXY(event, board);
-            selectBoxX1 = pos.x;
-            selectBoxY1 = pos.y;
-            selectBoxX2 = pos.x;
-            selectBoxY2 = pos.y;
+            // Use pageX/pageY for absolute positioning
+            selectBoxX1 = event.pageX;
+            selectBoxY1 = event.pageY;
+            selectBoxX2 = event.pageX;
+            selectBoxY2 = event.pageY;
             isSelectBoxActive = true;
 
             reCalcSelectBox();
         }
     });
 
-    board.mousemove(function(event) {
+    $(document).mousemove(function(event) {
         if (!isSelectBoxActive) {
             return;
         }
@@ -1622,9 +1630,9 @@ $(function() {
             selectBox.css('visibility', 'visible');
         }
 
-        var pos = getXY(event, board)
-        selectBoxX2 = pos.x;
-        selectBoxY2 = pos.y;
+        // Use pageX/pageY for absolute positioning
+        selectBoxX2 = event.pageX;
+        selectBoxY2 = event.pageY;
 
         reCalcSelectBox();
     });
