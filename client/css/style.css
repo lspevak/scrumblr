@@ -686,3 +686,26 @@ img {
     visibility: hidden;
     pointer-events: none;
 }
+
+/* Checkbox styles */
+.checkbox {
+    font-size: 1.2em;
+    display: inline-block;
+    padding-right: 5px;
+    transition: transform 0.1s;
+    font-weight: bold;
+}
+
+.checkbox:hover {
+    transform: scale(1.2);
+}
+
+.checkbox.checked {
+    color: #2E7D32;
+    text-shadow: 0 0 1px rgba(0,0,0,0.3);
+}
+
+.checkbox.unchecked {
+    color: #424242;
+    text-shadow: 0 0 1px rgba(0,0,0,0.2);
+}
