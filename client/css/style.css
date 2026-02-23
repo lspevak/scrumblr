@@ -681,5 +681,8 @@ img {
 
 #select-box {
     border: 1px dotted #000;
-    position: absolute;
+    position: fixed;
+    z-index: 9999;
+    visibility: hidden;
+    pointer-events: none;
 }
