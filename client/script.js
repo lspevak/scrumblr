@@ -127,6 +127,7 @@ function getMessage(m) {
             if (data.value) {
                 cardObj.children('.content:first').attr('data-text', data.value);
                 cardObj.children('.content:first').html(marked(data.value));
+                enableCheckboxes(data.id);
             }
             if (data.colour) {
                 changeCardColour(cardObj, data.colour)
@@ -409,7 +410,12 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     card.children('.content').editable(function(value, settings) {
         $("#" + id).children('.content:first').attr('data-text', value);
         onCardChange(id, value, null);
-        return (marked(value));
+        var rendered = marked(value);
+        // Re-enable checkboxes after editing
+        setTimeout(function() {
+            enableCheckboxes(id);
+        }, 10);
+        return rendered;
     }, {
         type: 'textarea',
         data: function() {
@@ -441,6 +447,94 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     //add applicable sticker
     if (sticker !== null)
         addSticker(id, sticker);
+    
+    // Enable clickable checkboxes
+    enableCheckboxes(id);
+}
+
+// Checkbox handling functions
+function enableCheckboxes(cardId) {
+    var contentDiv = $("#" + cardId).children('.content:first');
+    
+    // Wrap checkbox characters in spans to make them clickable
+    contentDiv.find('p').each(function() {
+        var $p = $(this);
+        var html = $p.html();
+        
+        // Skip if already processed (avoid double-wrapping)
+        if (html.indexOf('class="checkbox"') !== -1) {
+            return;
+        }
+        
+        // Replace unchecked and checked boxes with clickable spans
+        html = html.replace(/^☐/, '<span class="checkbox unchecked" style="cursor:pointer; user-select:none;">☐</span>');
+        html = html.replace(/^☑/, '<span class="checkbox checked" style="cursor:pointer; user-select:none;">☑</span>');
+        
+        $p.html(html);
+    });
+    
+    // Add click handlers to checkboxes
+    contentDiv.off('click.checkbox').on('click.checkbox', '.checkbox', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        toggleCheckbox(cardId, $(this));
+    });
+}
+
+function toggleCheckbox(cardId, $checkbox) {
+    var contentDiv = $("#" + cardId).children('.content:first');
+    var currentText = contentDiv.attr('data-text');
+    
+    var isChecked = $checkbox.hasClass('checked');
+    
+    // Find the line containing this checkbox by getting its paragraph
+    var $p = $checkbox.closest('p');
+    var $allP = contentDiv.find('p');
+    
+    // Find all paragraphs that contain checkboxes
+    var $checkboxPs = $allP.filter(function() {
+        return $(this).find('.checkbox').length > 0;
+    });
+    
+    // Get the index of this paragraph among checkbox paragraphs
+    var checkboxPIndex = $checkboxPs.index($p);
+    
+    // Split text into lines
+    var lines = currentText.split('\n');
+    
+    // Find which lines have checkboxes
+    var checkboxLineIndices = [];
+    for (var i = 0; i < lines.length; i++) {
+        if (lines[i].match(/^[☐☑]/)) {
+            checkboxLineIndices.push(i);
+        }
+    }
+    
+    // Toggle the checkbox on the corresponding line
+    if (checkboxPIndex >= 0 && checkboxPIndex < checkboxLineIndices.length) {
+        var lineIndex = checkboxLineIndices[checkboxPIndex];
+        if (isChecked) {
+            // Change ☑ to ☐ 
+            lines[lineIndex] = lines[lineIndex].replace(/^☑/, '☐');
+        } else {
+            // Change ☐ to ☑
+            lines[lineIndex] = lines[lineIndex].replace(/^☐/, '☑');
+        }
+    }
+    
+    var newText = lines.join('\n');
+    
+    // Update the data attribute
+    contentDiv.attr('data-text', newText);
+    
+    // Re-render the content
+    contentDiv.html(marked(newText));
+    
+    // Re-enable checkboxes after re-rendering
+    enableCheckboxes(cardId);
+    
+    // Notify server of the change
+    onCardChange(cardId, newText, null);
 }
 
 function onCardChange(id, text, colour) {
