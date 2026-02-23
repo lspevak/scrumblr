@@ -12,6 +12,10 @@ var isSelectBoxActive = false
 var startSourceCardPosition = null;
 // Mapping of card ID -> original left, top positions
 var selectedCardPositions = null;
+// Undo functionality
+var undoStack = [];
+var MAX_UNDO_STACK = 50;
+var isUndoing = false;
 
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
 var socket = io.connect({path: baseurl + "/socket.io"});
@@ -234,8 +238,139 @@ $(document).bind('keydown', function(event) {
         ctrlPressed = true;
     } else if (keyTrap == 46) { // DEL
         deleteSelectedCards();
+    } else if (ctrlPressed && keyTrap == 90) { // CTRL+Z
+        event.preventDefault();
+        performUndo();
     }
 });
+
+// Undo helper functions
+function addToUndoStack(action) {
+    if (isUndoing) {
+        return; // Don't track undo actions themselves
+    }
+
+    undoStack.push(action);
+
+    // Limit stack size
+    if (undoStack.length > MAX_UNDO_STACK) {
+        undoStack.shift();
+    }
+}
+
+function captureCardState(cardId) {
+    var cardObj = $("#" + cardId);
+    var cardPosition = cardObj.position();
+    var cardText = cardObj.children('.content:first').attr('data-text') || '';
+    var cardImgSrc = cardObj.children('.card-image').attr("src");
+    var cardColor = null;
+    var cardType = null;
+
+    // Get card rotation
+    var transform = cardObj.css('transform') || cardObj.css('-webkit-transform');
+    var cardRot = 0;
+    if (transform && transform !== 'none') {
+        var values = transform.split('(')[1].split(')')[0].split(',');
+        var a = parseFloat(values[0]);
+        var b = parseFloat(values[1]);
+        cardRot = Math.round(Math.atan2(b, a) * (180/Math.PI));
+    }
+
+    // Get card color and type
+    for(var i = 0; i < cardColours.length; i++) {
+        if (cardImgSrc.indexOf(cardColours[i]) !== -1) {
+            cardColor = cardColours[i];
+            cardType = cardImgSrc.indexOf('-pi') !== -1 ? 2 : 1;
+            break;
+        }
+    }
+
+    return {
+        id: cardId,
+        text: cardText,
+        x: cardPosition.left,
+        y: cardPosition.top,
+        rot: cardRot,
+        colour: cardColor,
+        cardType: cardType
+    };
+}
+
+function performUndo() {
+    if (undoStack.length === 0) {
+        return;
+    }
+
+    isUndoing = true;
+    var action = undoStack.pop();
+
+    try {
+        switch (action.type) {
+            case 'createCard':
+                // Undo card creation by deleting it
+                $("#" + action.id).remove();
+                sendAction('deleteCard', { id: action.id });
+                break;
+
+            case 'deleteCard':
+                // Undo card deletion by recreating it (without sticker)
+                drawNewCard(action.id, action.text, action.x, action.y, action.rot, action.colour, null, action.cardType);
+                sendAction('createCard', {
+                    id: action.id,
+                    text: action.text,
+                    x: action.x,
+                    y: action.y,
+                    rot: action.rot,
+                    colour: action.colour,
+                    type: action.cardType
+                });
+                break;
+
+            case 'editCard':
+                // Undo card text edit by restoring old text
+                $("#" + action.id).children('.content:first').attr('data-text', action.oldText);
+                var rendered = marked(action.oldText);
+                $("#" + action.id).children('.content:first').html(rendered);
+                sendAction('editCard', {
+                    id: action.id,
+                    value: action.oldText,
+                    colour: null
+                });
+                // Re-enable checkboxes
+                setTimeout(function() {
+                    enableCheckboxes(action.id);
+                }, 10);
+                break;
+
+            case 'moveCard':
+                // Undo card move by moving it back
+                var card = $("#" + action.id);
+                card.css({
+                    left: action.oldPosition.left + "px",
+                    top: action.oldPosition.top + "px"
+                });
+                sendAction('moveCard', {
+                    id: action.id,
+                    position: action.oldPosition,
+                    oldposition: action.newPosition
+                });
+                break;
+
+            case 'changeColour':
+                // Undo color change by changing back to old color
+                var cardObj = $('#' + action.id);
+                changeCardColour(cardObj, action.oldColour);
+                sendAction('editCard', {
+                    id: action.id,
+                    value: null,
+                    colour: action.oldColour
+                });
+                break;
+        }
+    } finally {
+        isUndoing = false;
+    }
+}
 
 function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 	var img_src = null;
@@ -309,6 +444,14 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 
         sendAction('moveCard', data);
         finishMovingOtherSelectedCards(this.id);
+
+        // Add to undo stack
+        addToUndoStack({
+            type: 'moveCard',
+            id: this.id,
+            oldPosition: ui.originalPosition,
+            newPosition: ui.position
+        });
     });
 
     card.children(".droppable").droppable({
@@ -387,6 +530,19 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 
     card.children('.card-icon').click(
         function() {
+            // Capture card state for undo before deleting
+            var cardState = captureCardState(id);
+            addToUndoStack({
+                type: 'deleteCard',
+                id: cardState.id,
+                text: cardState.text,
+                x: cardState.x,
+                y: cardState.y,
+                rot: cardState.rot,
+                colour: cardState.colour,
+                cardType: cardState.cardType
+            });
+
             $("#" + id).remove();
             //notify server of delete
             sendAction('deleteCard', {
@@ -408,8 +564,22 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     );
 
     card.children('.content').editable(function(value, settings) {
+        // Capture old text for undo before updating
+        var oldText = $("#" + id).children('.content:first').attr('data-text') || '';
+
         $("#" + id).children('.content:first').attr('data-text', value);
         onCardChange(id, value, null);
+
+        // Add to undo stack only if text actually changed
+        if (oldText !== value) {
+            addToUndoStack({
+                type: 'editCard',
+                id: id,
+                oldText: oldText,
+                newText: value
+            });
+        }
+
         var rendered = marked(value);
         // Re-enable checkboxes after editing
         setTimeout(function() {
@@ -447,7 +617,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     //add applicable sticker
     if (sticker !== null)
         addSticker(id, sticker);
-    
+
     // Enable clickable checkboxes
     enableCheckboxes(id);
 }
@@ -455,24 +625,24 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 // Checkbox handling functions
 function enableCheckboxes(cardId) {
     var contentDiv = $("#" + cardId).children('.content:first');
-    
+
     // Wrap checkbox characters in spans to make them clickable
     contentDiv.find('p').each(function() {
         var $p = $(this);
         var html = $p.html();
-        
+
         // Skip if already processed (avoid double-wrapping)
         if (html.indexOf('class="checkbox"') !== -1) {
             return;
         }
-        
+
         // Replace unchecked and checked boxes with clickable spans
         html = html.replace(/^☐/, '<span class="checkbox unchecked" style="cursor:pointer; user-select:none;">☐</span>');
         html = html.replace(/^☑/, '<span class="checkbox checked" style="cursor:pointer; user-select:none;">☑</span>');
-        
+
         $p.html(html);
     });
-    
+
     // Add click handlers to checkboxes
     contentDiv.off('click.checkbox').on('click.checkbox', '.checkbox', function(e) {
         e.stopPropagation();
@@ -484,24 +654,24 @@ function enableCheckboxes(cardId) {
 function toggleCheckbox(cardId, $checkbox) {
     var contentDiv = $("#" + cardId).children('.content:first');
     var currentText = contentDiv.attr('data-text');
-    
+
     var isChecked = $checkbox.hasClass('checked');
-    
+
     // Find the line containing this checkbox by getting its paragraph
     var $p = $checkbox.closest('p');
     var $allP = contentDiv.find('p');
-    
+
     // Find all paragraphs that contain checkboxes
     var $checkboxPs = $allP.filter(function() {
         return $(this).find('.checkbox').length > 0;
     });
-    
+
     // Get the index of this paragraph among checkbox paragraphs
     var checkboxPIndex = $checkboxPs.index($p);
-    
+
     // Split text into lines
     var lines = currentText.split('\n');
-    
+
     // Find which lines have checkboxes
     var checkboxLineIndices = [];
     for (var i = 0; i < lines.length; i++) {
@@ -509,7 +679,7 @@ function toggleCheckbox(cardId, $checkbox) {
             checkboxLineIndices.push(i);
         }
     }
-    
+
     // Toggle the checkbox on the corresponding line
     if (checkboxPIndex >= 0 && checkboxPIndex < checkboxLineIndices.length) {
         var lineIndex = checkboxLineIndices[checkboxPIndex];
@@ -521,18 +691,18 @@ function toggleCheckbox(cardId, $checkbox) {
             lines[lineIndex] = lines[lineIndex].replace(/^☐/, '☑');
         }
     }
-    
+
     var newText = lines.join('\n');
-    
+
     // Update the data attribute
     contentDiv.attr('data-text', newText);
-    
+
     // Re-render the content
     contentDiv.html(marked(newText));
-    
+
     // Re-enable checkboxes after re-rendering
     enableCheckboxes(cardId);
-    
+
     // Notify server of the change
     onCardChange(cardId, newText, null);
 }
@@ -644,6 +814,14 @@ function finishMovingOtherSelectedCards(sourceCardId) {
             };
 
             sendAction('moveCard', data);
+
+            // Add to undo stack
+            addToUndoStack({
+                type: 'moveCard',
+                id: cardId,
+                oldPosition: clonedCardPosition,
+                newPosition: cardPosition
+            });
         }
     });
 }
@@ -668,6 +846,14 @@ function changeToNextCardColour(id) {
     cardObj.children('.card-image').attr("src", newImgSrc);
 
     onCardChange(id, null, newColour);
+
+    // Add to undo stack
+    addToUndoStack({
+        type: 'changeColour',
+        id: id,
+        oldColour: currentColour,
+        newColour: newColour
+    });
 }
 
 function changeCardColour(cardObj, colour) {
@@ -793,6 +979,12 @@ function createCard(id, text, x, y, rot, colour, type) {
     };
 
     sendAction(action, data);
+
+    // Add to undo stack
+    addToUndoStack({
+        type: 'createCard',
+        id: id
+    });
 }
 
 function randomCardColour() {
@@ -1328,7 +1520,21 @@ function deleteSelectedCards() {
         var card = $(this);
 
         if (card.hasClass('card-marked')) {
-            var cardId = card.attr('id')
+            var cardId = card.attr('id');
+
+            // Capture card state for undo before deleting
+            var cardState = captureCardState(cardId);
+            addToUndoStack({
+                type: 'deleteCard',
+                id: cardState.id,
+                text: cardState.text,
+                x: cardState.x,
+                y: cardState.y,
+                rot: cardState.rot,
+                colour: cardState.colour,
+                cardType: cardState.cardType
+            });
+
             $("#" + cardId).remove();
             // notify server of delete
             sendAction('deleteCard', {
@@ -1682,7 +1888,7 @@ $(function() {
         var isNames = $(event.target).closest('.names').length > 0;
         var isButtonsDialog = $(event.target).closest('#buttons-dialog').length > 0;
         var isColIcon = $(event.target).hasClass('col-icon');
-        
+
         if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon) {
             return;
         }
