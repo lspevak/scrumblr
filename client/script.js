@@ -285,6 +285,9 @@ function captureCardState(cardId) {
         }
     }
 
+    // Get stickers
+    var stickers = getCardStickers(cardId);
+
     return {
         id: cardId,
         text: cardText,
@@ -292,8 +295,24 @@ function captureCardState(cardId) {
         y: cardPosition.top,
         rot: cardRot,
         colour: cardColor,
-        cardType: cardType
+        cardType: cardType,
+        stickers: stickers
     };
+}
+
+function getCardStickers(cardId) {
+    var stickers = [];
+    var stickerImgs = $('#' + cardId + ' .filler img');
+    stickerImgs.each(function() {
+        var src = $(this).attr('src');
+        if (src) {
+            var match = src.match(/stickers\/(.+)\.png/);
+            if (match) {
+                stickers.push(match[1]);
+            }
+        }
+    });
+    return stickers;
 }
 
 function performUndo() {
@@ -313,7 +332,7 @@ function performUndo() {
                 break;
 
             case 'deleteCard':
-                // Undo card deletion by recreating it (without sticker)
+                // Undo card deletion by recreating it with stickers
                 drawNewCard(action.id, action.text, action.x, action.y, action.rot, action.colour, null, action.cardType);
                 sendAction('createCard', {
                     id: action.id,
@@ -324,6 +343,16 @@ function performUndo() {
                     colour: action.colour,
                     type: action.cardType
                 });
+                // Restore stickers if any
+                if (action.stickers && action.stickers.length > 0) {
+                    for (var i = 0; i < action.stickers.length; i++) {
+                        addSticker(action.id, action.stickers[i]);
+                        sendAction('addSticker', {
+                            cardId: action.id,
+                            stickerId: action.stickers[i]
+                        });
+                    }
+                }
                 break;
 
             case 'editCard':
@@ -365,6 +394,27 @@ function performUndo() {
                     value: null,
                     colour: action.oldColour
                 });
+                break;
+
+            case 'addSticker':
+                // Undo sticker addition by restoring previous stickers
+                var stickerContainer = $('#' + action.cardId + ' .filler');
+                stickerContainer.html('');
+                if (action.previousStickers && action.previousStickers.length > 0) {
+                    for (var i = 0; i < action.previousStickers.length; i++) {
+                        addSticker(action.cardId, action.previousStickers[i]);
+                        sendAction('addSticker', {
+                            cardId: action.cardId,
+                            stickerId: action.previousStickers[i]
+                        });
+                    }
+                } else {
+                    // If there were no previous stickers, remove all
+                    sendAction('addSticker', {
+                        cardId: action.cardId,
+                        stickerId: 'nosticker'
+                    });
+                }
                 break;
         }
     } finally {
@@ -460,6 +510,9 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
             var stickerId = ui.draggable.attr("id");
             var cardId = $(this).parent().attr('id');
 
+            // Capture previous stickers for undo
+            var previousStickers = getCardStickers(cardId);
+
             addSticker(cardId, stickerId);
 
             var data = {
@@ -467,6 +520,14 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
                 stickerId: stickerId
             };
             sendAction('addSticker', data);
+
+            // Add to undo stack
+            addToUndoStack({
+                type: 'addSticker',
+                cardId: cardId,
+                stickerId: stickerId,
+                previousStickers: previousStickers
+            });
 
             //remove hover state to everything on the board to prevent
             //a jquery bug where it gets left around
@@ -540,7 +601,8 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
                 y: cardState.y,
                 rot: cardState.rot,
                 colour: cardState.colour,
-                cardType: cardState.cardType
+                cardType: cardState.cardType,
+                stickers: cardState.stickers
             });
 
             $("#" + id).remove();
@@ -1532,7 +1594,8 @@ function deleteSelectedCards() {
                 y: cardState.y,
                 rot: cardState.rot,
                 colour: cardState.colour,
-                cardType: cardState.cardType
+                cardType: cardState.cardType,
+                stickers: cardState.stickers
             });
 
             $("#" + cardId).remove();
