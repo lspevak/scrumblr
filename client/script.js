@@ -976,7 +976,16 @@ function copyCard(id) {
         }
     }
 
-    createCardAtPos(cardPosition.left + cardOffset, cardPosition.top, cardColor, cardText, cardType);
+    // Create the card to the right with offset based on card type and theme
+    var newCardId = createCardAtPos(cardPosition.left + cardOffset, cardPosition.top, cardColor, cardText, cardType);
+
+    // Bring the new card to the top of the stacking order
+    var maxZ = 0;
+    $('.card').each(function() {
+        var z = parseInt($(this).css('z-index')) || 0;
+        if (z > maxZ) maxZ = z;
+    });
+    $('#' + newCardId).css('z-index', maxZ + 1);
 }
 
 function moveEraser(eraser, x) {
@@ -1091,15 +1100,18 @@ function createCardAtDlgPos(color, type) {
 function createCardAtPos(x, y, color, text, type) {
     var rotation = Math.random() * 10 - 5; //add a bit of random rotation (+/- 10deg)
     var id = Math.round(Math.random() * 99999999); //is this big enough to assure uniqueness?
+    var cardId = 'card' + id;
 
     createCard(
-        'card' + id,
+        cardId,
         text,
         x,
         y,
         rotation,
         color,
         type);
+
+    return cardId;
 }
 
 function initCards(cardArray) {
