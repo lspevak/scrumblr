@@ -632,9 +632,9 @@ function cleanAndInitializeDemoRoom() {
 		createCard(room_name, 'card4', 'Read funny book', 423, 66, Math.random() * 10 - 5, 'green');
 		createCard(room_name, 'card5', 'Learn [markdown syntax](https://www.markdownguide.org/basic-syntax/)', 0, 47, Math.random() * 10 - 5, 'red');
 		createCard(room_name, 'card6', 'Call your **friends**...', 855, 72, Math.random() * 10 - 5, 'orange');
-		createCard(room_name, 'card7', '# Repair printer\n---\nand test it!', 902, 240, Math.random() * 10 - 5, 'purple');
-		createCard(room_name, 'card8', 'Meet your family', 18, 444, Math.random() * 10 - 5, 'red');
-		createCard(room_name, 'card9', '**Checklist:**\n\n☐ Task one\n\n☑ Task two\n\n☐ Task three', 855, 440, Math.random() * 10 - 5, 'yellow');
+	createCard(room_name, 'card7', '# Repair printer\n---\nand test it!', 902, 240, Math.random() * 10 - 5, 'purple');
+	createCard(room_name, 'card8', 'Meet your family', 18, 444, Math.random() * 10 - 5, 'red');
+	createCard(room_name, 'card9', '**Checklist:**\n\n☐ Task one\n\n☑ Task two\n\n☐ Task three', 855, 395, Math.random() * 10 - 5, 'yellow');
 
 		db.createRow(room_name, 'row123', {id: 'row123', text: 'Other tasks...', y: 400});
 	});
