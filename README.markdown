@@ -1,14 +1,14 @@
-scrumblr, v. 0.13.0
+scrumblr, v. 0.14.0
 ========
 
 what is it
 ----------
-[scrumblr](http://scrumblr.ca) is a web-based simulation of a physical agile kanban board that supports real-time collaboration. it is built using node.js, websockets (using socket.io), CSS3, and jquery. i hope you like it.
+[scrumblr](http://scrumblr.ca) is a web-based simulation of a physical agile kanban board that supports real-time collaboration. it is built using node.js, websockets (using socket.io), CSS3, and jquery. I hope you like it.
 
 This fork contains useful extensions and fixes of this simple and great tool used for my SCRUM stand-ups.
 - horizontal separators
 - seven colors of cards
-- create card button for each color
+- create card buttons for each color
 - middle-sized cards
 - visible star stickers
 - Redis/MongoDB fixes
@@ -25,6 +25,7 @@ This fork contains useful extensions and fixes of this simple and great tool use
 - select multiple cards using mouse (click on board and select area with cards) and then press DELETE to remove them - v. 0.11
 - clone a card using a new icon button on a card - v. 0.12
 - move all selected cards when dragging one of selected cards - v. 0.13
+- interactive checkboxes on cards (☐ and ☑) / undo for some actions using Ctrl+Z (card creation, deletion, text edits, moves, and color changes) / global card selection outside board area / create random card button fixed - v. 0.14
 - ...
 
 ![Extensions and fixes](scrumblr_extensions_2020.png)

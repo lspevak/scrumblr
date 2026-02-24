@@ -1,7 +1,7 @@
 {
   "name": "scrumblr",
   "description": "Web-based simulation of a physical agile sprint board that supports real-time collaboration.",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "repository": {
     "url": "https://github.com/lspevak/scrumblr"
   },
