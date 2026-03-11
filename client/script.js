@@ -1549,20 +1549,6 @@ function reCalcSelectBox() {
     selectBox.css('height', y4 - y3 + 'px');
 }
 
-function getXY(evt, element) {
-    var scrollTop = document.documentElement.scrollTop ?
-        document.documentElement.scrollTop :
-        document.body.scrollTop;
-    var scrollLeft = document.documentElement.scrollLeft ?
-        document.documentElement.scrollLeft :
-        document.body.scrollLeft;
-    var parentOffset = element.offset();
-    var x = evt.clientX - parentOffset.left + scrollLeft;
-    var y = evt.clientY - parentOffset.top + scrollTop;
-
-    return {x:x, y:y};
-}
-
 function selectCards() {
     $(".card").each(function() {
         var card = $(this);
@@ -1571,10 +1557,15 @@ function selectCards() {
         var cardY1 = cardOffset.top + 25;
         var cardX2 = cardX1 + card.width() - 25;
         var cardY2 = cardY1 + card.height() - 25;
-        var leftPos = Math.min(selectBoxX1, selectBoxX2);
-        var topPos = Math.min(selectBoxY1, selectBoxY2);
-        var rightPos = Math.max(selectBoxX1, selectBoxX2);
-        var bottomPos = Math.max(selectBoxY1, selectBoxY2);
+        
+        // Convert selection box coordinates from viewport to document coordinates
+        var scrollLeft = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft;
+        var scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
+        
+        var leftPos = Math.min(selectBoxX1, selectBoxX2) + scrollLeft;
+        var topPos = Math.min(selectBoxY1, selectBoxY2) + scrollTop;
+        var rightPos = Math.max(selectBoxX1, selectBoxX2) + scrollLeft;
+        var bottomPos = Math.max(selectBoxY1, selectBoxY2) + scrollTop;
 
         if (cardX1 >= leftPos && cardX2 <= rightPos && cardY1 >= topPos && cardY2 <= bottomPos) {
             card.addClass('card-marked');
@@ -1963,8 +1954,10 @@ $(function() {
         var isNames = $(event.target).closest('.names').length > 0;
         var isButtonsDialog = $(event.target).closest('#buttons-dialog').length > 0;
         var isColIcon = $(event.target).hasClass('col-icon');
+        var isRow = $(event.target).hasClass('row-line') || $(event.target).closest('.row-line').length > 0;
+        var isResizeHandle = $(event.target).hasClass('ui-resizable-handle') || $(event.target).closest('.ui-resizable-handle').length > 0;
 
-        if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon) {
+        if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon || isRow || isResizeHandle) {
             return;
         }
 
@@ -1984,11 +1977,11 @@ $(function() {
             ctrlPressed = false;
             return;
         } else {
-            // Use pageX/pageY for absolute positioning
-            selectBoxX1 = event.pageX;
-            selectBoxY1 = event.pageY;
-            selectBoxX2 = event.pageX;
-            selectBoxY2 = event.pageY;
+            // Use clientX/clientY for fixed positioning
+            selectBoxX1 = event.clientX;
+            selectBoxY1 = event.clientY;
+            selectBoxX2 = event.clientX;
+            selectBoxY2 = event.clientY;
             isSelectBoxActive = true;
 
             reCalcSelectBox();
@@ -2005,9 +1998,9 @@ $(function() {
             selectBox.css('visibility', 'visible');
         }
 
-        // Use pageX/pageY for absolute positioning
-        selectBoxX2 = event.pageX;
-        selectBoxY2 = event.pageY;
+        // Use clientX/clientY for fixed positioning
+        selectBoxX2 = event.clientX;
+        selectBoxY2 = event.clientY;
 
         reCalcSelectBox();
     });
