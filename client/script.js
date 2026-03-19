@@ -12,10 +12,12 @@ var isSelectBoxActive = false
 var startSourceCardPosition = null;
 // Mapping of card ID -> original left, top positions
 var selectedCardPositions = null;
-// Undo functionality
+// Undo/Redo functionality
 var undoStack = [];
+var redoStack = [];
 var MAX_UNDO_STACK = 50;
 var isUndoing = false;
+var isRedoing = false;
 
 var baseurl = location.pathname.substring(0, location.pathname.lastIndexOf('/'));
 var socket = io.connect({path: baseurl + "/socket.io"});
@@ -238,23 +240,37 @@ $(document).bind('keydown', function(event) {
         ctrlPressed = true;
     } else if (keyTrap == 46) { // DEL
         deleteSelectedCards();
+    } else if (ctrlPressed && event.shiftKey && keyTrap == 90) { // CTRL+SHIFT+Z
+        event.preventDefault();
+        performRedo();
     } else if (ctrlPressed && keyTrap == 90) { // CTRL+Z
         event.preventDefault();
         performUndo();
     }
 });
 
-// Undo helper functions
+// Undo/Redo helper functions
 function addToUndoStack(action) {
-    if (isUndoing) {
-        return; // Don't track undo actions themselves
+    if (isUndoing || isRedoing) {
+        return; // Don't track undo/redo actions themselves
     }
 
     undoStack.push(action);
+    // Any new action clears the redo history
+    redoStack = [];
 
     // Limit stack size
     if (undoStack.length > MAX_UNDO_STACK) {
         undoStack.shift();
+    }
+}
+
+function addToRedoStack(action) {
+    redoStack.push(action);
+
+    // Limit stack size
+    if (redoStack.length > MAX_UNDO_STACK) {
+        redoStack.shift();
     }
 }
 
@@ -327,12 +343,29 @@ function performUndo() {
         switch (action.type) {
             case 'createCard':
                 // Undo card creation by deleting it
+                // Save state for redo before removing
+                var state = captureCardState(action.id);
+                addToRedoStack({
+                    type: 'createCard',
+                    id: state.id,
+                    text: state.text,
+                    x: state.x,
+                    y: state.y,
+                    rot: state.rot,
+                    colour: state.colour,
+                    cardType: state.cardType,
+                    stickers: state.stickers
+                });
                 $("#" + action.id).remove();
                 sendAction('deleteCard', { id: action.id });
                 break;
 
             case 'deleteCard':
                 // Undo card deletion by recreating it with stickers
+                addToRedoStack({
+                    type: 'deleteCard',
+                    id: action.id
+                });
                 drawNewCard(action.id, action.text, action.x, action.y, action.rot, action.colour, null, action.cardType);
                 sendAction('createCard', {
                     id: action.id,
@@ -357,6 +390,12 @@ function performUndo() {
 
             case 'editCard':
                 // Undo card text edit by restoring old text
+                addToRedoStack({
+                    type: 'editCard',
+                    id: action.id,
+                    oldText: action.newText,
+                    newText: action.oldText
+                });
                 $("#" + action.id).children('.content:first').attr('data-text', action.oldText);
                 var rendered = marked(action.oldText);
                 $("#" + action.id).children('.content:first').html(rendered);
@@ -373,6 +412,12 @@ function performUndo() {
 
             case 'moveCard':
                 // Undo card move by moving it back
+                addToRedoStack({
+                    type: 'moveCard',
+                    id: action.id,
+                    oldPosition: action.newPosition,
+                    newPosition: action.oldPosition
+                });
                 var card = $("#" + action.id);
                 card.css({
                     left: action.oldPosition.left + "px",
@@ -387,6 +432,12 @@ function performUndo() {
 
             case 'changeColour':
                 // Undo color change by changing back to old color
+                addToRedoStack({
+                    type: 'changeColour',
+                    id: action.id,
+                    oldColour: action.newColour,
+                    newColour: action.oldColour
+                });
                 var cardObj = $('#' + action.id);
                 changeCardColour(cardObj, action.oldColour);
                 sendAction('editCard', {
@@ -398,6 +449,12 @@ function performUndo() {
 
             case 'addSticker':
                 // Undo sticker addition by restoring previous stickers
+                addToRedoStack({
+                    type: 'addSticker',
+                    cardId: action.cardId,
+                    stickerId: action.stickerId,
+                    previousStickers: action.previousStickers
+                });
                 var stickerContainer = $('#' + action.cardId + ' .filler');
                 stickerContainer.html('');
                 if (action.previousStickers && action.previousStickers.length > 0) {
@@ -419,6 +476,141 @@ function performUndo() {
         }
     } finally {
         isUndoing = false;
+    }
+}
+
+function performRedo() {
+    if (redoStack.length === 0) {
+        return;
+    }
+
+    isRedoing = true;
+    var action = redoStack.pop();
+
+    try {
+        switch (action.type) {
+            case 'createCard':
+                // Redo card creation by recreating it with stickers
+                undoStack.push({
+                    type: 'createCard',
+                    id: action.id
+                });
+                drawNewCard(action.id, action.text, action.x, action.y, action.rot, action.colour, null, action.cardType);
+                sendAction('createCard', {
+                    id: action.id,
+                    text: action.text,
+                    x: action.x,
+                    y: action.y,
+                    rot: action.rot,
+                    colour: action.colour,
+                    type: action.cardType
+                });
+                // Restore stickers if any
+                if (action.stickers && action.stickers.length > 0) {
+                    for (var i = 0; i < action.stickers.length; i++) {
+                        addSticker(action.id, action.stickers[i]);
+                        sendAction('addSticker', {
+                            cardId: action.id,
+                            stickerId: action.stickers[i]
+                        });
+                    }
+                }
+                break;
+
+            case 'deleteCard':
+                // Redo card deletion by removing it again
+                var state = captureCardState(action.id);
+                undoStack.push({
+                    type: 'deleteCard',
+                    id: state.id,
+                    text: state.text,
+                    x: state.x,
+                    y: state.y,
+                    rot: state.rot,
+                    colour: state.colour,
+                    cardType: state.cardType,
+                    stickers: state.stickers
+                });
+                $("#" + action.id).remove();
+                sendAction('deleteCard', { id: action.id });
+                break;
+
+            case 'editCard':
+                // Redo card text edit by applying the new text again
+                undoStack.push({
+                    type: 'editCard',
+                    id: action.id,
+                    oldText: action.newText,
+                    newText: action.oldText
+                });
+                $("#" + action.id).children('.content:first').attr('data-text', action.oldText);
+                var rendered = marked(action.oldText);
+                $("#" + action.id).children('.content:first').html(rendered);
+                sendAction('editCard', {
+                    id: action.id,
+                    value: action.oldText,
+                    colour: null
+                });
+                setTimeout(function() {
+                    enableCheckboxes(action.id);
+                }, 10);
+                break;
+
+            case 'moveCard':
+                // Redo card move by moving to the new position again
+                undoStack.push({
+                    type: 'moveCard',
+                    id: action.id,
+                    oldPosition: action.newPosition,
+                    newPosition: action.oldPosition
+                });
+                var card = $("#" + action.id);
+                card.css({
+                    left: action.oldPosition.left + "px",
+                    top: action.oldPosition.top + "px"
+                });
+                sendAction('moveCard', {
+                    id: action.id,
+                    position: action.oldPosition,
+                    oldposition: action.newPosition
+                });
+                break;
+
+            case 'changeColour':
+                // Redo colour change by applying the new colour again
+                undoStack.push({
+                    type: 'changeColour',
+                    id: action.id,
+                    oldColour: action.newColour,
+                    newColour: action.oldColour
+                });
+                var cardObj = $('#' + action.id);
+                changeCardColour(cardObj, action.oldColour);
+                sendAction('editCard', {
+                    id: action.id,
+                    value: null,
+                    colour: action.oldColour
+                });
+                break;
+
+            case 'addSticker':
+                // Redo sticker addition by re-applying the sticker
+                var currentStickers = getCardStickers(action.cardId);
+                undoStack.push({
+                    type: 'addSticker',
+                    cardId: action.cardId,
+                    stickerId: action.stickerId,
+                    previousStickers: currentStickers
+                });
+                addSticker(action.cardId, action.stickerId);
+                sendAction('addSticker', {
+                    cardId: action.cardId,
+                    stickerId: action.stickerId
+                });
+                break;
+        }
+    } finally {
+        isRedoing = false;
     }
 }
 
@@ -746,7 +938,7 @@ function toggleCheckbox(cardId, $checkbox) {
     if (checkboxPIndex >= 0 && checkboxPIndex < checkboxLineIndices.length) {
         var lineIndex = checkboxLineIndices[checkboxPIndex];
         if (isChecked) {
-            // Change ☑ to ☐ 
+            // Change ☑ to ☐
             lines[lineIndex] = lines[lineIndex].replace(/^☑/, '☐');
         } else {
             // Change ☐ to ☑
@@ -1557,11 +1749,11 @@ function selectCards() {
         var cardY1 = cardOffset.top + 25;
         var cardX2 = cardX1 + card.width() - 25;
         var cardY2 = cardY1 + card.height() - 25;
-        
+
         // Convert selection box coordinates from viewport to document coordinates
         var scrollLeft = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft;
         var scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-        
+
         var leftPos = Math.min(selectBoxX1, selectBoxX2) + scrollLeft;
         var topPos = Math.min(selectBoxY1, selectBoxY2) + scrollTop;
         var rightPos = Math.max(selectBoxX1, selectBoxX2) + scrollLeft;
