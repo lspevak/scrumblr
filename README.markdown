@@ -1,4 +1,4 @@
-scrumblr, v. 0.14.0
+scrumblr, v. 0.15.0
 ========
 
 what is it
@@ -26,6 +26,7 @@ This fork contains useful extensions and fixes of this simple and great tool use
 - clone a card using a new icon button on a card - v. 0.12
 - move all selected cards when dragging one of selected cards - v. 0.13
 - interactive checkboxes on cards (☐ and ☑) / undo for some actions using Ctrl+Z (card creation, deletion, text edits, moves, and color changes) / global card selection outside board area / create random card button fixed - v. 0.14
+- redo for undo actions / JQuery upgraded / minor fixes - v. 0.15
 - ...
 
 ![Extensions and fixes](scrumblr_extensions_2020.png)
