@@ -225,7 +225,7 @@ function getMessage(m) {
     }
 }
 
-$(document).bind('keyup', function(event) {
+$(document).on('keyup', function(event) {
     keyTrap = event.which;
 
     if (keyTrap == 17) { // ctrl
@@ -233,7 +233,7 @@ $(document).bind('keyup', function(event) {
      }
 });
 
-$(document).bind('keydown', function(event) {
+$(document).on('keydown', function(event) {
     keyTrap = event.which;
 
     if (keyTrap == 17) { // CTRL
@@ -672,7 +672,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     });
 
     // After a drag
-    card.bind("dragstop", function(event, ui) {
+    card.on("dragstop", function(event, ui) {
         if (keyTrap == 27) {
             keyTrap = null;
             return;
@@ -1370,7 +1370,7 @@ function drawNewColumn(columnName) {
 }
 
 function onColumnChange(id, text) {
-    var names = Array();
+    var names = [];
 
     //Get the names of all the columns right from the DOM
     $('.col').each(function() {
@@ -1604,18 +1604,18 @@ function changeThemeTo(theme) {
 function setCookie(c_name, value, exdays) {
     var exdate = new Date();
     exdate.setDate(exdate.getDate() + exdays);
-    var c_value = escape(value) + ((exdays === null) ? "" : "; expires=" + exdate.toUTCString());
+    var c_value = encodeURIComponent(value) + ((exdays === null) ? "" : "; expires=" + exdate.toUTCString());
     document.cookie = c_name + "=" + c_value;
 }
 
 function getCookie(c_name) {
     var i, x, y, ARRcookies = document.cookie.split(";");
     for (i = 0; i < ARRcookies.length; i++) {
-        x = ARRcookies[i].substr(0, ARRcookies[i].indexOf("="));
-        y = ARRcookies[i].substr(ARRcookies[i].indexOf("=") + 1);
+        x = ARRcookies[i].substring(0, ARRcookies[i].indexOf("="));
+        y = ARRcookies[i].substring(ARRcookies[i].indexOf("=") + 1);
         x = x.replace(/^\s+|\s+$/g, "");
         if (x == c_name) {
-            return unescape(y);
+            return decodeURIComponent(y);
         }
     }
 }
@@ -1686,7 +1686,7 @@ function calcCardOffset() {
         $(".col").each(function(i) {
             var col = $(this);
             if (col.offset().left + col.outerWidth() > card.offset().left +
-                card.outerWidth() || i === $(".col").size() - 1) {
+                card.outerWidth() || i === $(".col").length - 1) {
                 offsets[card.attr('id')] = {
                     col: col,
                     x: ((card.offset().left - col.offset().left) / col.outerWidth())
@@ -1753,7 +1753,6 @@ function selectCards() {
         // Convert selection box coordinates from viewport to document coordinates
         var scrollLeft = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft;
         var scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop;
-
         var leftPos = Math.min(selectBoxX1, selectBoxX2) + scrollLeft;
         var topPos = Math.min(selectBoxY1, selectBoxY2) + scrollTop;
         var rightPos = Math.max(selectBoxX1, selectBoxX2) + scrollLeft;
@@ -1980,7 +1979,7 @@ $(function() {
 
     $('#add-col').click(
         function() {
-            cardCount = $(".card").size();
+            cardCount = $(".card").length;
             if (cardCount > 0 && !confirm('Do you really want to add a column?')) {
                 return false;
             }
@@ -1992,7 +1991,7 @@ $(function() {
 
     $('#delete-col').click(
         function() {
-            cardCount = $(".card").size();
+            cardCount = $(".card").length;
             if (cardCount > 0 && !confirm('Do you really want to delete the column?')) {
                 return false;
             }
@@ -2056,14 +2055,14 @@ $(function() {
     (function() {
         var offsets;
 
-        $(".board-outline").bind("resizestart", function() {
+        $(".board-outline").on("resizestart", function() {
             offsets = calcCardOffset();
         });
-        $(".board-outline").bind("resize", function(event, ui) {
+        $(".board-outline").on("resize", function(event, ui) {
             adjustCard(offsets, false);
             adjustEraserAndMarker(null);
         });
-        $(".board-outline").bind("resizestop", function(event, ui) {
+        $(".board-outline").on("resizestop", function(event, ui) {
             boardResizeHappened(event, ui);
             adjustCard(offsets, true);
             adjustRows(ui.position.width);
@@ -2087,7 +2086,7 @@ $(function() {
     });
 
     // After a drag
-    marker.bind("dragstop", function(event, ui) {
+    marker.on("dragstop", function(event, ui) {
         if (keyTrap == 27) {
             keyTrap = null;
             return;
@@ -2117,7 +2116,7 @@ $(function() {
     });
 
     // After a drag
-    eraser.bind("dragstop", function(event, ui) {
+    eraser.on("dragstop", function(event, ui) {
         if (keyTrap == 27) {
             keyTrap = null;
             return;
@@ -2138,18 +2137,20 @@ $(function() {
     // Handle show select box for cards or buttons dialog
     $(document).mousedown(function(event) {
         // ignore clicking on a card or other interactive elements
-        var isCard = $(event.target).hasClass('card') || $(event.target).closest('.card').length > 0;
-        var isSticker = $(event.target).hasClass('sticker-img');
-        var isEditable = $(event.target).hasClass('editable');
-        var isButton = $(event.target).closest('.buttons').length > 0;
-        var isStickers = $(event.target).closest('.stickers').length > 0;
-        var isNames = $(event.target).closest('.names').length > 0;
-        var isButtonsDialog = $(event.target).closest('#buttons-dialog').length > 0;
-        var isColIcon = $(event.target).hasClass('col-icon');
-        var isRow = $(event.target).hasClass('row-line') || $(event.target).closest('.row-line').length > 0;
-        var isResizeHandle = $(event.target).hasClass('ui-resizable-handle') || $(event.target).closest('.ui-resizable-handle').length > 0;
+        var target = $(event.target)
+        var isCard = target.hasClass('card') || target.closest('.card').length > 0;
+        var isSticker =target.hasClass('sticker-img');
+        var isEditable = target.hasClass('editable');
+        var isButton = target.closest('.buttons').length > 0;
+        var isStickers = target.closest('.stickers').length > 0;
+        var isNames = target.closest('.names').length > 0;
+        var isButtonsDialog = target.closest('#buttons-dialog').length > 0;
+        var isColIcon = target.hasClass('col-icon');
+        var isRow = target.hasClass('row-line') || target.closest('.row-line').length > 0;
+        var isResizeHandle = target.hasClass('ui-resizable-handle') || target.closest('.ui-resizable-handle').length > 0;
+        var isDraggable = target.hasClass('ui-draggable'); // eraser/marker
 
-        if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon || isRow || isResizeHandle) {
+        if (isCard || isSticker || isEditable || isButton || isStickers || isNames || isButtonsDialog || isColIcon || isRow || isResizeHandle || isDraggable) {
             return;
         }
 
