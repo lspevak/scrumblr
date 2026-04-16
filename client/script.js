@@ -4,7 +4,6 @@ var columns = [];
 var currentTheme = "bigcards";
 var boardInitialized = false;
 var keyTrap = null;
-var ctrlPressed = false;
 // select box attributes
 var selectBoxX1 = 0, selectBoxY1 = 0, selectBoxX2 = 0, selectBoxY2 = 0;
 var isSelectBoxActive = false
@@ -227,23 +226,17 @@ function getMessage(m) {
 
 $(document).on('keyup', function(event) {
     keyTrap = event.which;
-
-    if (keyTrap == 17) { // ctrl
-        ctrlPressed = false;
-     }
 });
 
 $(document).on('keydown', function(event) {
     keyTrap = event.which;
 
-    if (keyTrap == 17) { // CTRL
-        ctrlPressed = true;
-    } else if (keyTrap == 46) { // DEL
+    if (keyTrap == 46) { // DEL
         deleteSelectedCards();
-    } else if (ctrlPressed && event.shiftKey && keyTrap == 90) { // CTRL+SHIFT+Z
+    } else if (event.ctrlKey && event.shiftKey && keyTrap == 90) { // CTRL+SHIFT+Z
         event.preventDefault();
         performRedo();
-    } else if (ctrlPressed && keyTrap == 90) { // CTRL+Z
+    } else if (event.ctrlKey && keyTrap == 90) { // CTRL+Z
         event.preventDefault();
         performUndo();
     }
@@ -854,8 +847,8 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
     });
 
     card.click(
-        function() {
-            if (!ctrlPressed) {
+        function(event) {
+            if (!event.ctrlKey) {
                 return;
             }
 
@@ -2161,13 +2154,12 @@ $(function() {
             buttonsDialog.css('visibility', 'hidden');
         }
 
-        if (ctrlPressed) {
+        if (event.ctrlKey) {
             // show create card dialog
             var top = event.pageY - 50;
             var left = event.pageX - 20;
             buttonsDialog.css({top: top + 'px', left: left + 'px', position: 'relative'});
             buttonsDialog.css('visibility', 'visible');
-            ctrlPressed = false;
             return;
         } else {
             // Use clientX/clientY for fixed positioning
