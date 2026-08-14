@@ -1738,10 +1738,10 @@ function selectCards() {
     $(".card").each(function() {
         var card = $(this);
         var cardOffset = card.offset();
-        var cardX1 = cardOffset.left + 25;
-        var cardY1 = cardOffset.top + 25;
-        var cardX2 = cardX1 + card.width() - 25;
-        var cardY2 = cardY1 + card.height() - 25;
+        var cardX1 = cardOffset.left;
+        var cardY1 = cardOffset.top;
+        var cardX2 = cardX1 + card.outerWidth();
+        var cardY2 = cardY1 + card.outerHeight();
 
         // Convert selection box coordinates from viewport to document coordinates
         var scrollLeft = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft;
@@ -1751,7 +1751,7 @@ function selectCards() {
         var rightPos = Math.max(selectBoxX1, selectBoxX2) + scrollLeft;
         var bottomPos = Math.max(selectBoxY1, selectBoxY2) + scrollTop;
 
-        if (cardX1 >= leftPos && cardX2 <= rightPos && cardY1 >= topPos && cardY2 <= bottomPos) {
+        if (cardX2 >= leftPos && cardX1 <= rightPos && cardY2 >= topPos && cardY1 <= bottomPos) {
             card.addClass('card-marked');
         }
     });
@@ -2128,7 +2128,11 @@ $(function() {
     buttonsDialog = $('#buttons-dialog');
 
     // Handle show select box for cards or buttons dialog
-    $(document).mousedown(function(event) {
+    $(document).on('pointerdown', function(event) {
+        if (event.originalEvent.isPrimary === false || event.button != 0) {
+            return;
+        }
+
         // ignore clicking on a card or other interactive elements
         var target = $(event.target)
         var isCard = target.hasClass('card') || target.closest('.card').length > 0;
@@ -2173,7 +2177,11 @@ $(function() {
         }
     });
 
-    $(document).mousemove(function(event) {
+    $(document).on('pointermove', function(event) {
+        if (event.originalEvent.isPrimary === false) {
+            return;
+        }
+
         if (!isSelectBoxActive) {
             return;
         }
@@ -2190,7 +2198,11 @@ $(function() {
         reCalcSelectBox();
     });
 
-    $(document).mouseup(function(event) {
+    document.addEventListener('pointerup', function(event) {
+        if (event.isPrimary === false) {
+            return;
+        }
+
         if (!isSelectBoxActive) {
             return;
         }
@@ -2198,5 +2210,14 @@ $(function() {
          selectBox.css('visibility', 'hidden');
          isSelectBoxActive = false;
          selectCards();
-    });
+    }, true);
+
+    document.addEventListener('pointercancel', function(event) {
+        if (event.isPrimary === false || !isSelectBoxActive) {
+            return;
+        }
+
+        selectBox.css('visibility', 'hidden');
+        isSelectBoxActive = false;
+    }, true);
 });

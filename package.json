@@ -7,6 +7,9 @@
   },
   "author": "Ali Asaria (https://github.com/aliasaria/scrumblr), Libor Spevak (https://github.com/lspevak/scrumblr)",
   "main": "server.js",
+  "scripts": {
+    "test": "node test/browser-input.test.js"
+  },
   "directories": {
     "lib": "lib/"
   },
