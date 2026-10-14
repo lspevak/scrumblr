@@ -109,7 +109,7 @@ body {
 	border: none;
 	font-size:inherit;
 	font-weight:inherit;
-	background-color:inherit;
+	background: transparent;
 	xvertical-align: inherit;
 	font-family: inherit;
 	text-align: left;
@@ -122,6 +122,18 @@ body {
 	width: 100%;
 	color: #330066;
 	color: #666;
+}
+
+.card-edit-form input,
+.card-edit-form textarea,
+.card-edit-form input:focus,
+.card-edit-form textarea:focus {
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	border: none;
+	outline: none;
+	box-shadow: none;
 }
 
 .board-table {
