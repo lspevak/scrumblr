@@ -1,10 +1,12 @@
 var argv = require('yargs')
-        .usage('Usage: $0 [--port INTEGER [8080]] [--baseurl STRING ["/"]] [--redis STRING:INT [127.0.0.1:6379]] [--mongodb STRING:INT [127.0.0.1:27017]] [--gaEnabled] [--gaAccount STRING [UA-2069672-4]]')
+        .usage('Usage: $0 [--port INTEGER [8080]] [--baseurl STRING ["/"]] [--jira-url URL] [--redis STRING:INT [127.0.0.1:6379]] [--mongodb STRING:INT [127.0.0.1:27017]] [--gaEnabled] [--gaAccount STRING [UA-2069672-4]]')
         .argv;
 
 exports.server = {
 	port: argv.port || 8080,
-	baseurl: argv.baseurl || '/'
+	baseurl: argv.baseurl || '/',
+    jiraUrl: require('./client/card-markdown').normalizeBaseUrl(
+        argv['jira-url'] !== undefined ? argv['jira-url'] : process.env.JIRA_BASE_URL || '')
 };
 
 if ('mongodb' in argv) {

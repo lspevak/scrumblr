@@ -78,6 +78,24 @@ how to install and run on your own computer (linux/osx)
 - consider running the service using `pm2` tool (https://pm2.keymetrics.io/)
 - Dockerfile included for running using Swarm
 
+Jira references
+---------------
+
+Set a server-wide Jira base URL to turn keys such as `ABC-1234` into inline
+links on cards:
+
+```
+node server.js --jira-url https://jira.example.com
+```
+
+Alternatively, set the `JIRA_BASE_URL` environment variable. The command-line
+option takes precedence. The URL must use HTTP or HTTPS and may include a
+path such as `/jira`, but no credentials, query string or fragment.
+Without a configured URL, automatic linking is disabled.
+
+References open `<base URL>/browse/ABC-1234` in a new tab. Existing links and
+code snippets are preserved, and editing retains the original Markdown text.
+
 license
 -------
 

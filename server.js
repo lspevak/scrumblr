@@ -26,6 +26,7 @@ var sids_to_user_names = [];
  SETUP EXPRESS
 **************/
 var app = express();
+app.locals.jiraBaseUrl = conf.jiraUrl;
 var router = express.Router();
 
 app.use(compression());

@@ -131,7 +131,7 @@ function getMessage(m) {
             cardObj = $("#" + data.id)
             if (data.value) {
                 cardObj.children('.content:first').attr('data-text', data.value);
-                cardObj.children('.content:first').html(marked(data.value));
+                cardObj.children('.content:first').html(renderCardText(data.value));
                 enableCheckboxes(data.id);
             }
             if (data.colour) {
@@ -390,7 +390,7 @@ function performUndo() {
                     newText: action.oldText
                 });
                 $("#" + action.id).children('.content:first').attr('data-text', action.oldText);
-                var rendered = marked(action.oldText);
+                var rendered = renderCardText(action.oldText);
                 $("#" + action.id).children('.content:first').html(rendered);
                 sendAction('editCard', {
                     id: action.id,
@@ -537,7 +537,7 @@ function performRedo() {
                     newText: action.oldText
                 });
                 $("#" + action.id).children('.content:first').attr('data-text', action.oldText);
-                var rendered = marked(action.oldText);
+                var rendered = renderCardText(action.oldText);
                 $("#" + action.id).children('.content:first').html(rendered);
                 sendAction('editCard', {
                     id: action.id,
@@ -607,6 +607,10 @@ function performRedo() {
     }
 }
 
+function renderCardText(text) {
+    return renderCardMarkdown(text, $('meta[name="jira-base-url"]').attr('content') || '');
+}
+
 function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 	var img_src = null;
 	var style_content = null;
@@ -636,7 +640,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
 	<img src="images/icons/token/fill-colour.png" class="card-change-color-icon' + style_card_change_color_icon + '" />\
 	<img class="card-image" src="images/' + img_src + '">\
 	<div id="content:' + id + '" class="content' + style_content + ' stickertarget droppable" data-text="">' +
-        marked(text) + '</div><span class="filler' + style_filler + '"></span></div>';
+        renderCardText(text) + '</div><span class="filler' + style_filler + '"></span></div>';
 
     var card = $(h);
 
@@ -648,6 +652,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
         snapTolerance: 5,
         containment: [0, 0, 3100, 3100],
         stack: ".card",
+        cancel: 'a, input, textarea, button, select, option, .ui-resizable-handle',
         start: function(event, ui) {
             keyTrap = null;
             startMovingSelectedCards(this.id, ui.position);
@@ -827,7 +832,7 @@ function drawNewCard(id, text, x, y, rot, colour, sticker, type) {
             });
         }
 
-        var rendered = marked(value);
+        var rendered = renderCardText(value);
         // Re-enable checkboxes after editing
         setTimeout(function() {
             enableCheckboxes(id);
@@ -945,7 +950,7 @@ function toggleCheckbox(cardId, $checkbox) {
     contentDiv.attr('data-text', newText);
 
     // Re-render the content
-    contentDiv.html(marked(newText));
+    contentDiv.html(renderCardText(newText));
 
     // Re-enable checkboxes after re-rendering
     enableCheckboxes(cardId);

@@ -1,6 +1,7 @@
 doctype html
 html(lang="en")
 	head
+		meta(name='jira-base-url', content=locals.jiraBaseUrl || '')
 
 		<!-- STYLES -->
 		<link rel="stylesheet" type="text/css" href="css/font-awesome.min.css" />
@@ -19,6 +20,7 @@ html(lang="en")
 		<script src="lib/jquery.jeditable.js"></script>
 		<script src="lib/jquery.blockUI.js"></script>
 		<script src="lib/marked.min.js"></script>
+		<script src="card-markdown.js"></script>
 
 		<!-- Socket.IO -->
 		<script src="socket.io/socket.io.js"></script>
