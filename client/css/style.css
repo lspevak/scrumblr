@@ -180,6 +180,17 @@ h1, h1 a {
 	text-decoration: none;
 }
 
+.content a.jira-reference {
+	font: inherit;
+	color: #0000ee;
+	letter-spacing: inherit;
+	text-decoration: underline;
+}
+
+.content a.jira-reference:visited {
+	color: #551a8b;
+}
+
 h2 {
 	font-family: 'Rock Salt', "Arial Rounded MT Bold", arial, serif;
 	color: #5c9db4;
