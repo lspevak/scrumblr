@@ -1,4 +1,4 @@
-scrumblr, v. 0.16.0
+scrumblr, v. 0.17.0
 ========
 
 what is it
@@ -27,7 +27,13 @@ This fork contains useful extensions and fixes of this simple and great tool use
 - move all selected cards when dragging one of selected cards - v. 0.13
 - interactive checkboxes on cards (☐ and ☑) / undo for some actions using Ctrl+Z (card creation, deletion, text edits, moves, and color changes) / global card selection outside board area / create random card button fixed - v. 0.14
 - redo for undo actions / JQuery upgraded / minor fixes - v. 0.15
-- Browser compatibility fixes - v. 0.16
+- browser compatibility fixes - v. 0.16
+- automatically link Jira keys such as ABC-1234 in card text when configured with --jira-url or environment variable JIRA_BASE_URL - v. 0.17
+- preserve original Markdown, existing links and code snippets across creation, editing, synchronization, undo/redo and checkbox updates. - v. 0.17
+- open references in a new tab without initiating card dragging. - v. 0.17
+- make card editors transparent and remove native field focus decorations for consistent browser rendering. - v. 0.17
+- add configurable inline Jira references to cards - v. 0.17
+- finalize selection over interactive headers and select cards on any overlap - v. 0.17
 - ...
 
 ![Extensions and fixes](scrumblr_extensions_2020.png)
